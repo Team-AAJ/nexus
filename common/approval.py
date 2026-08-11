@@ -11,7 +11,7 @@ from common.contracts import ExecutionAction, RiskLevel
 
 HIGH_RISK_ACTIONS = {
     "delete_file", "delete_folder", "move_file", "move_folder",
-    "rename_file", "rename_folder", "write_file",
+    "rename_file", "rename_folder", "write_file", "write_document",
     "run_terminal", "kill_process", "close_app", "close_window",
     "send", "submit", "book", "pay", "purchase", "login",
 }

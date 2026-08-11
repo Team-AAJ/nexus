@@ -5,7 +5,9 @@ from typing import Any
 from common import ApprovalGate, ExecutionAction, ExecutionResult
 from desktop.accessibility import DesktopAccessibilityDriver
 from desktop.capabilities import FileExplorerCapability, OfficeCapability
+from desktop.document_io import read_document, write_document
 from desktop.executor.router import ActionRouter
+from desktop.file_search import find_document
 from perception.state_detector import ScreenStateDetector
 
 
@@ -47,23 +49,17 @@ class DesktopPlatformExecutor:
             return ExecutionResult(False, "desktop", action.action, "Action targets a different platform.")
         try:
             self.approval_gate.ensure_allowed(action)
-            if action.action in {"open_path", "reveal_file", "open_file", "list_items", "search_items", "create_word_document", "create_excel_workbook", "create_powerpoint_presentation", "read_word_document", "read_excel_rows", "inspect_powerpoint_presentation", "open_office_document"}:
+            if action.action in {"open_path", "reveal_file", "open_file", "list_items", "search_items", "create_word_document", "create_excel_workbook", "create_powerpoint_presentation", "read_word_document", "read_excel_rows", "inspect_powerpoint_presentation", "open_office_document", "read_document", "write_document", "find_document"}:
                 return self._execute_capability_action(action)
             if action.action in {"click_target", "fill_target", "read_target", "target_exists", "wait_for_target", "inspect_window", "inspect_screen_state"}:
                 return self._execute_target_action(action)
-            payload = {
-                "action": action.action,
-                **action.parameters,
-                **action.target,
-            }
-
+            payload = {"action": action.action, **action.parameters, **action.target}
             if action.value is not None:
                 payload.setdefault("value", action.value)
                 payload.setdefault("text", action.value)
-                key = _SINGLE_VALUE_KEY_BY_ACTION.get(action.action)
-                if key:
-                    payload.setdefault(key, action.value)
-
+                single_key = _SINGLE_VALUE_KEY_BY_ACTION.get(action.action)
+                if single_key:
+                    payload.setdefault(single_key, action.value)
             data = self.router.execute(payload)
             success = getattr(data, "success", data is not False)
             return ExecutionResult(success, "desktop", action.action,
@@ -85,6 +81,11 @@ class DesktopPlatformExecutor:
         elif action.action == "read_word_document": data = self.office.read_word_document(parameters["path"])
         elif action.action == "read_excel_rows": data = self.office.read_excel_rows(parameters["path"])
         elif action.action == "inspect_powerpoint_presentation": data = self.office.inspect_powerpoint_presentation(parameters["path"])
+        elif action.action == "read_document": data = read_document(parameters["path"])
+        elif action.action == "write_document":
+            write_document(parameters["path"], str(action.value or ""))
+            data = True
+        elif action.action == "find_document": data = find_document(parameters["query"], parameters.get("root"))
         else: data = self.office.open_document(parameters["path"])
         return ExecutionResult(bool(data) or isinstance(data, list), "desktop", action.action, "Completed", data=data, evidence={"verified": bool(data) or isinstance(data, list)})
 
